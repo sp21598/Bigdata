@@ -1,0 +1,114 @@
+mkdir hive_class
+
+cp/home/cloudera/Downloads/sales_data.csv /home/cloudera/hive_class/
+
+hadoop fs -copyFromLocal /home/cloudera/hive_class/sales_data.csv /tmp/
+
+use hive_class_b1;
+
+create table sales_order_data_csv_v1
+(
+ORDERNUMBER int,
+QUANTITYORDERED int,
+PRICEEACH float,
+ORDERLINENUMBER int,
+SALES float,
+STATUS string,
+QTR_ID int,
+MONTH_ID int,
+YEAR_ID int,
+PRODUCTLINE string,
+MSRP int,
+PRODUCTCODE string,
+PHONE string,
+CITY string,
+STATE string,
+POSTALCODE string,
+COUNTRY string,
+TERRITORY string,
+CONTACTLASTNAME string,
+CONTACTFIRSTNAME string,
+DEALSIZE string
+)
+row format delimited
+fields terminated by ','
+tblproperties("skip.header.line.count"="1")
+; 
+
+load data local inpath 'file:///home/cloudera/hive_class/sales_data.csv' into table sales_order_data_csv_v1;
+
+set hive.cli.print.header=true;
+select * from sales_order_data_csv_v1 limit 10;
+
+
+create table sales_order_data_orc
+(
+ORDERNUMBER int,
+QUANTITYORDERED int,
+PRICEEACH float,
+ORDERLINENUMBER int,
+SALES float,
+STATUS string,
+QTR_ID int,
+MONTH_ID int,
+YEAR_ID int,
+PRODUCTLINE string,
+MSRP int,
+PRODUCTCODE string,
+PHONE string,
+CITY string,
+STATE string,
+POSTALCODE string,
+COUNTRY string,
+TERRITORY string,
+CONTACTLASTNAME string,
+CONTACTFIRSTNAME string,
+DEALSIZE string
+)
+stored as orc;
+
+from sales_order_data_csv_v1 insert overwrite table sales_order_data_orc select *;
+
+select * from sales_order_data_orc limit 10;
+
+
+select sum(sales) as total_sales,year_id from sales_order_data_orc group by year_id;
+
+ with table1 as(
+    select sum(quantityordered) as total_quantity,productline from sales_order_data_orc group by productline)
+    ,table2 as(
+    select max(total_quantity) as maximum_quantity from table1)
+    select productline from table1 t1 inner join table2 t2 on t1.total_quantity=t2.maximum_quantity;
+
+select sum(sales) as total_sales,qtr_id from sales_order_data_orc group by qtr_id;
+
+
+ with table1 as(
+    select sum(sales) as total_sales,qtr_id from sales_order_data_orc group by qtr_id),
+    table2 as(
+    select min(total_sales) as minimum_sales from table1)
+    select qtr_id from table1 t1 inner join table2 t2 on t1.total_sales=t2.minimum_sales;
+
+ with table1 as(
+    select country,sum(sales) as total_sales from sales_order_data_orc group by country),
+    table2 as(
+    select max(total_sales) as maximum_sales,min(total_sales) as minimum_sales from table1)
+    ,table3 as (
+    select country,"country with maximum sales" as description from table1 t1 inner join table2 t2 on t1.total_sales=t2.maximum_sales),
+    table4 as (
+    select country,"country with minimum sales" as description from table1 t1 inner join table2 t2 on t1.total_sales=t2.minimum_sales)
+    select country,description from table3 union all select country,description from table4;
+
+select sum(sales),qtr_id,city from sales_order_data_orc group by city,qtr_id;
+
+ with table1 as(
+   select sum(quantityordered) as total_quantities_sold,month_id,year_id from sales_order_data_orc group by month_id,year_id),
+   table2 as(
+   select max(total_quantities_sold) as maximum_quantities_sold,year_id from table1 group by year_id)
+   select month_id as max_sold_month,t1.year_id as year from table1 t1 inner join table2 t2 on t1.total_quantities_sold=t2.maximum_quantities_sold and t1.year_id=t2.year_id;
+
+
+
+
+
+ show databases;
