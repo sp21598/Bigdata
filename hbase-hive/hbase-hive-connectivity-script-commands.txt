@@ -1,0 +1,91 @@
+1)Create HBase Table 
+
+ create 'sales_data_table','customer_information','order_information','order_time','product_information','deal_size'
+
+2)Create Hive Table:
+ 
+create external table sales_data (
+ORDERNUMBER int,
+QUANTITYORDERED int,
+PRICEEACH float,
+ORDERLINENUMBER int,
+SALES float,
+STATUS string,
+QTR_ID int,
+MONTH_ID int,
+YEAR_ID int,
+PRODUCTLINE string,
+MSRP int,
+PRODUCTCODE string,
+PHONE string,
+CITY string,
+STATE string,
+POSTALCODE string,
+COUNTRY string,
+TERRITORY string,
+CONTACTLASTNAME string,
+CONTACTFIRSTNAME string,
+DEALSIZE string
+)
+row format delimited
+fields terminated by ','
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES
+("hbase.columns.mapping"=":key,order_information:QUANTITYORDERED,order_information:PRICEEACH,order_information:ORDERLINENUMBER,order_information:SALES,order_information:STATUS,order_time:QTR_ID,order_time:MONTH_ID,order_time:YEAR_ID,product_information:PRODUCTLINE,product_information:MSRP,product_information:PRODUCTCODE,customer_information:PHONE,customer_information:CITY,customer_information:STATE,customer_information:POSTALCODE,customer_information:COUNTRY,customer_information:TERRITORY,customer_information:CONTACTLASTNAME,customer_information:CONTACTFIRSTNAME,deal_size:DEALSIZE")
+TBLPROPERTIES("hbase.table.name"="sales_data_table","skip.header.line.count"="1");
+
+3)Create Hive Staging table :
+
+create external table sales_data_staging_new (
+ORDERNUMBER int,
+QUANTITYORDERED int,
+PRICEEACH float,
+ORDERLINENUMBER int,
+SALES float,
+STATUS string,
+QTR_ID int,
+MONTH_ID int,
+YEAR_ID int,
+PRODUCTLINE string,
+MSRP int,
+PRODUCTCODE string,
+PHONE string,
+CITY string,
+STATE string,
+POSTALCODE string,
+COUNTRY string,
+TERRITORY string,
+CONTACTLASTNAME string,
+CONTACTFIRSTNAME string,
+DEALSIZE string
+)
+row format delimited
+fields terminated by ',' 
+TBLPROPERTIES("skip.header.line.count"="1");
+
+4) Load data from local to Hive Staging table :
+
+load data local inpath 'file:///home/cloudera/hive_class/sales_data.csv' into table sales_data_staging_new;
+
+5) Load data into Hive external table(connected to hbase) from staging table :
+
+insert into table sales_data select * from sales_data_staging_new;
+
+6) Use scan command in HBase to check data:
+
+scan 'sales_data_table',{'LIMIT'=>10}
+
+7) use put command to insert data in hbase table and check in hbase if data is inserted:
+
+put 'sales_data_table','99999','product_information:PRODUCTLINE','Oneplus Phones'
+
+get 'sales_data_table','99999'
+
+8)check the same data in hive table by runnying any hive query for the same:
+
+select * from sales_data order by ordernumber desc limit 10;
+
+
+
+
+
